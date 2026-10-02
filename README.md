@@ -14,7 +14,7 @@
 [Explore Features](#-key-features) •
 [Quickstart](#-quickstart-guide) •
 [Methodology](#-quantitative-methodology) •
-[Roadmap](#-tri-modal-roadmap) •
+[Roadmap](ROADMAP.md) •
 [Documentation](PROJECT_SPECIFICATION.md)
 
 ---
