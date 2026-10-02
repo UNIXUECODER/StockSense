@@ -92,7 +92,7 @@ stock_app/
 ### 2. Installation
 Clone the repository and install the dependencies:
 ```bash
-git clone https://github.com/<your-username>/StockSense.git
+git clone https://github.com/UNIXUECODER/StockSense.git
 cd StockSense
 pip install -r requirements.txt
 ```
