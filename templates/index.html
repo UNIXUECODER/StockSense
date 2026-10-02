@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockSense — Multi-Asset ML Prediction Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0d12;
+      --surface:  #0f1318;
+      --card-bg:  #141922;
+      --border:   #1e2530;
+      --blue:     #58a6ff;
+      --green:    #3fb950;
+      --orange:   #ffa657;
+      --red:      #f78166;
+      --purple:   #d2a8ff;
+      --muted:    #8b949e;
+      --text:     #c9d1d9;
+      --heading:  #e6edf3;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Glow blob ── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 900px; height: 500px;
+      background: radial-gradient(ellipse, rgba(88,166,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 940px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 50px;
+      animation: fadeDown 0.7s ease both;
+    }
+
+    .logo-tag {
+      display: inline-block;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--blue);
+      border: 1px solid rgba(88,166,255,0.3);
+      padding: 6px 16px;
+      border-radius: 4px;
+      margin-bottom: 22px;
+      background: rgba(88,166,255,0.04);
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 3.8rem);
+      font-weight: 800;
+      color: var(--heading);
+      line-height: 1.1;
+      letter-spacing: -1px;
+    }
+
+    h1 span { color: var(--blue); }
+
+    .subtitle {
+      margin-top: 16px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ── Ticker tape ── */
+    .ticker-wrap {
+      overflow: hidden;
+      white-space: nowrap;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+      margin-bottom: 44px;
+      animation: fadeIn 1s ease 0.3s both;
+    }
+
+    .ticker-inner {
+      display: inline-block;
+      animation: ticker 25s linear infinite;
+    }
+
+    .ticker-inner span {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 24px;
+    }
+
+    .ticker-inner span b { color: var(--green); }
+    .ticker-inner span.down b { color: var(--red); }
+
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ── Main card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 40px;
+      position: relative;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+      animation: fadeUp 0.7s ease 0.2s both;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--blue), transparent);
+      border-radius: 10px 10px 0 0;
+    }
+
+    /* ── Mode Switcher Tabs ── */
+    .tab-nav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      border-color: rgba(88,166,255,0.4);
+    }
+
+    .tab-btn.active {
+      background: rgba(88,166,255,0.12);
+      border-color: var(--blue);
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* ── Input Groups ── */
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 14px;
+    }
+
+    .text-input, .select-input {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 18px;
+      color: var(--heading);
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .text-input:focus, .select-input:focus {
+      border-color: var(--blue);
+    }
+
+    .text-input { flex: 1; }
+
+    /* Quick Pills */
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      background: rgba(88,166,255,0.06);
+      border: 1px solid rgba(88,166,255,0.2);
+      color: var(--blue);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .pill:hover {
+      background: rgba(88,166,255,0.18);
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      padding: 44px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.active {
+      border-color: var(--blue);
+      background: rgba(88,166,255,0.04);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .drop-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--heading);
+      margin-bottom: 6px;
+    }
+
+    .drop-hint {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .file-chosen {
+      margin-top: 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--green);
+      min-height: 18px;
+    }
+
+    /* ── Submit button ── */
+    .btn-predict {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 16px;
+      background: var(--blue);
+      color: #0a0d12;
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    .btn-predict:hover    { opacity: 0.90; transform: translateY(-1px); }
+    .btn-predict:active   { transform: translateY(0); }
+    .btn-predict:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* ── Loading overlay ── */
+    #loading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10,13,18,0.92);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    #loading.show { display: flex; }
+
+    .spinner {
+      width: 46px; height: 46px;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Error banner ── */
+    #error-box {
+      display: none;
+      margin-top: 20px;
+      padding: 14px 18px;
+      background: rgba(247,129,102,0.1);
+      border: 1px solid rgba(247,129,102,0.3);
+      border-radius: 6px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--red);
+    }
+
+    /* ── Results section ── */
+    #results {
+      display: none;
+      margin-top: 56px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+
+    .asset-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      background: rgba(88,166,255,0.08);
+      border: 1px solid rgba(88,166,255,0.25);
+      color: var(--blue);
+      padding: 5px 12px;
+      border-radius: 4px;
+    }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .stat-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--heading);
+    }
+
+    .stat-value.up    { color: var(--green); }
+    .stat-value.down  { color: var(--red); }
+    .stat-value.blue  { color: var(--blue); }
+
+    .stat-sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Explainability Card ── */
+    .explain-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+
+    .explain-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--heading);
+      margin-bottom: 4px;
+    }
+
+    .explain-sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .signals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .signal-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+    }
+
+    .signal-key {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .signal-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    /* ── Chart containers ── */
+    .chart-block {
+      margin-bottom: 36px;
+    }
+
+    .chart-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-badge {
+      font-size: 9px;
+      color: var(--blue);
+      border: 1px solid rgba(88,166,255,0.25);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .chart-block img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 80px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Fetching market data & generating predictions…</div>
+</div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-tag">Quantitative Machine Learning Engine</div>
+    <h1>Stock<span>Sense</span></h1>
+    <p class="subtitle">Multi-Asset Ensemble Forecasting · Alpha Strategy Backtesting · Indicator Signals</p>
+  </header>
+
+  <!-- Ticker tape -->
+  <div class="ticker-wrap">
+    <div class="ticker-inner">
+      <span>AAPL <b>+2.3%</b></span>
+      <span>MSFT <b>+1.8%</b></span>
+      <span class="down">GOOGL <b>-0.4%</b></span>
+      <span>NVDA <b>+5.1%</b></span>
+      <span class="down">AMZN <b>-1.2%</b></span>
+      <span>TSLA <b>+3.7%</b></span>
+      <span>RELIANCE <b>+1.4%</b></span>
+      <span class="down">TCS <b>-0.8%</b></span>
+      <span>SPY <b>+0.9%</b></span>
+      <!-- Loop -->
+      <span>AAPL <b>+2.3%</b></span>
+      <span>MSFT <b>+1.8%</b></span>
+      <span class="down">GOOGL <b>-0.4%</b></span>
+      <span>NVDA <b>+5.1%</b></span>
+      <span class="down">AMZN <b>-1.2%</b></span>
+      <span>TSLA <b>+3.7%</b></span>
+      <span>RELIANCE <b>+1.4%</b></span>
+      <span class="down">TCS <b>-0.8%</b></span>
+      <span>SPY <b>+0.9%</b></span>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="card">
+    <!-- Mode Navigation Tabs -->
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tabTickerBtn" onclick="switchMode('ticker')">
+        Live Market Lookup
+      </button>
+      <button class="tab-btn" id="tabCsvBtn" onclick="switchMode('csv')">
+        Upload Custom CSV
+      </button>
+    </div>
+
+    <!-- Mode 1: Live Ticker Lookup -->
+    <div class="tab-pane active" id="paneTicker">
+      <div class="form-group">
+        <label class="form-label" for="tickerInput">Asset Ticker Symbol</label>
+        <div class="input-row">
+          <input type="text" id="tickerInput" class="text-input" placeholder="e.g. AAPL, NVDA, RELIANCE.NS, TSLA" value="AAPL" />
+          <select id="periodInput" class="select-input">
+            <option value="1y">1 Year</option>
+            <option value="2y" selected>2 Years</option>
+            <option value="5y">5 Years</option>
+          </select>
+        </div>
+        <div class="pills">
+          <span class="pill" onclick="setTicker('AAPL')">AAPL</span>
+          <span class="pill" onclick="setTicker('NVDA')">NVDA</span>
+          <span class="pill" onclick="setTicker('MSFT')">MSFT</span>
+          <span class="pill" onclick="setTicker('SPY')">SPY</span>
+          <span class="pill" onclick="setTicker('RELIANCE.NS')">RELIANCE.NS</span>
+          <span class="pill" onclick="setTicker('TCS.NS')">TCS.NS</span>
+          <span class="pill" onclick="setTicker('BTC-USD')">BTC-USD</span>
+        </div>
+      </div>
+      <button class="btn-predict" id="predictTickerBtn" onclick="runTickerPrediction()">
+        Fetch & Run Ensemble Prediction →
+      </button>
+    </div>
+
+    <!-- Mode 2: CSV Upload -->
+    <div class="tab-pane" id="paneCsv">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="csvFile" accept=".csv" />
+        <span class="drop-icon">📂</span>
+        <div class="drop-label">Drop your CSV dataset here or click to browse</div>
+        <div class="drop-hint">Supports Yahoo Finance, NSE/BSE, Kaggle exports with OHLCV columns</div>
+      </div>
+      <div class="file-chosen" id="fileChosen"></div>
+      <button class="btn-predict" id="predictCsvBtn" disabled onclick="runCsvPrediction()">
+        Run CSV Prediction →
+      </button>
+    </div>
+
+    <div id="error-box"></div>
+  </div>
+
+  <!-- Results Section -->
+  <div id="results">
+    <div class="results-header">
+      <div>
+        <div class="section-label">— Quantitative Analysis</div>
+        <h2 style="font-size: 1.5rem; color: var(--heading); margin-top: 4px;">Forecasting & Backtest Report</h2>
+      </div>
+      <div class="asset-badge" id="assetBadge">Asset: AAPL</div>
+    </div>
+
+    <!-- 8 Metric Stats Grid -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- Explainability Card -->
+    <div class="explain-card">
+      <div class="explain-title">Model Explainability & Indicator Breakdown</div>
+      <div class="explain-sub">Real-time market regime signals influencing next-session directional inference</div>
+      <div class="signals-grid" id="signalsGrid"></div>
+    </div>
+
+    <!-- Chart: Alpha Strategy Backtest -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>1. Quantitative Backtest: Strategy vs. Benchmark</span>
+        <span class="chart-badge">Strategy Alpha</span>
+      </div>
+      <img id="chart-backtest" alt="Quantitative Backtest Chart" />
+    </div>
+
+    <!-- Chart: Price Trend & Volatility Bands -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>2. Price Dynamics + Moving Averages & Volatility Envelopes</span>
+        <span class="chart-badge">Trend Analysis</span>
+      </div>
+      <img id="chart-price" alt="Price Trend Chart" />
+    </div>
+
+    <!-- Chart: Directional Signals Overlay -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>3. Machine Learning Next-Day Directional Signals</span>
+        <span class="chart-badge">Signal Overlay</span>
+      </div>
+      <img id="chart-predictions" alt="Directional Predictions Chart" />
+    </div>
+
+    <!-- Chart: RSI -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>4. RSI — Relative Strength Index (14-Period Oscillator)</span>
+        <span class="chart-badge">Momentum</span>
+      </div>
+      <img id="chart-rsi" alt="RSI Chart" />
+    </div>
+
+    <!-- Chart: MACD -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>5. MACD — Moving Average Convergence Divergence</span>
+        <span class="chart-badge">Trend / Momentum</span>
+      </div>
+      <img id="chart-macd" alt="MACD Chart" />
+    </div>
+
+    <!-- Chart: Volume -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>6. Session Volume Distribution</span>
+        <span class="chart-badge">Liquidity</span>
+      </div>
+      <img id="chart-volume" alt="Volume Chart" />
+    </div>
+
+    <!-- Chart: Distribution -->
+    <div class="chart-block">
+      <div class="chart-title">
+        <span>7. Daily Return Distribution & KDE Fit</span>
+        <span class="chart-badge">Probability Density</span>
+      </div>
+      <img id="chart-dist" alt="Return Distribution Chart" />
+    </div>
+  </div>
+
+  <footer>StockSense · Academic Machine Learning Capstone · Soft Voting Ensemble Pipeline</footer>
+</div>
+
+<script>
+  let currentMode = 'ticker';
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('tabTickerBtn').classList.toggle('active', mode === 'ticker');
+    document.getElementById('tabCsvBtn').classList.toggle('active', mode === 'csv');
+    document.getElementById('paneTicker').classList.toggle('active', mode === 'ticker');
+    document.getElementById('paneCsv').classList.toggle('active', mode === 'csv');
+    document.getElementById('error-box').style.display = 'none';
+  }
+
+  function setTicker(symbol) {
+    document.getElementById('tickerInput').value = symbol;
+  }
+
+  const fileInput  = document.getElementById('csvFile');
+  const fileChosen = document.getElementById('fileChosen');
+  const predictCsvBtn = document.getElementById('predictCsvBtn');
+  const dropZone   = document.getElementById('dropZone');
+  const errorBox   = document.getElementById('error-box');
+  const loading    = document.getElementById('loading');
+  const loadingText = document.getElementById('loadingText');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) {
+      fileChosen.textContent = '✓ ' + fileInput.files[0].name;
+      predictCsvBtn.disabled = false;
+      errorBox.style.display = 'none';
+    }
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('active');
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileChosen.textContent = '✓ ' + e.dataTransfer.files[0].name;
+      predictCsvBtn.disabled = false;
+    }
+  });
+
+  async function runTickerPrediction() {
+    const ticker = document.getElementById('tickerInput').value.trim();
+    const period = document.getElementById('periodInput').value;
+
+    if (!ticker) {
+      showError('Please enter a valid stock ticker symbol (e.g. AAPL, NVDA, RELIANCE.NS)');
+      return;
+    }
+
+    const form = new FormData();
+    form.append('ticker', ticker);
+    form.append('period', period);
+
+    loadingText.textContent = `Fetching live data for ${ticker} & generating ensemble forecast…`;
+    await submitPrediction(form);
+  }
+
+  async function runCsvPrediction() {
+    if (!fileInput.files.length) return;
+    const form = new FormData();
+    form.append('file', fileInput.files[0]);
+
+    loadingText.textContent = `Analyzing uploaded dataset & generating quantitative backtest…`;
+    await submitPrediction(form);
+  }
+
+  async function submitPrediction(formData) {
+    errorBox.style.display = 'none';
+    loading.classList.add('show');
+
+    try {
+      const res = await fetch('/predict', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        showError(data.error || 'Prediction request failed.');
+        return;
+      }
+
+      renderResults(data);
+    } catch (err) {
+      showError('Network / Server Error: ' + err.message);
+    } finally {
+      loading.classList.remove('show');
+    }
+  }
+
+  function showError(msg) {
+    errorBox.textContent = '⚠ ' + msg;
+    errorBox.style.display = 'block';
+  }
+
+  function renderResults(data) {
+    const s = data.summary;
+    const isUp = s.is_up;
+    const stratPos = s.strat_return >= 0;
+    const bhPos    = s.bh_return >= 0;
+
+    document.getElementById('assetBadge').textContent = `Asset: ${s.asset_name} (${s.total_days} sessions)`;
+
+    // 8 Core Stats
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Next Session Signal</div>
+        <div class="stat-value ${isUp ? 'up' : 'down'}">${s.latest_pred}</div>
+        <div class="stat-sub">Ensemble direction</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Model Confidence</div>
+        <div class="stat-value blue">${s.latest_prob}%</div>
+        <div class="stat-sub">Probability estimate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Historical Accuracy</div>
+        <div class="stat-value">${s.hist_acc}%</div>
+        <div class="stat-sub">Realized hit rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Strategy Return</div>
+        <div class="stat-value ${stratPos ? 'up' : 'down'}">${stratPos ? '+' : ''}${s.strat_return}%</div>
+        <div class="stat-sub">ML Long/Cash alpha</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Buy & Hold Return</div>
+        <div class="stat-value ${bhPos ? 'up' : 'down'}">${bhPos ? '+' : ''}${s.bh_return}%</div>
+        <div class="stat-sub">Passive benchmark</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sharpe Ratio</div>
+        <div class="stat-value blue">${s.sharpe_ratio}</div>
+        <div class="stat-sub">Annualized risk-adj.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Win Rate (Precision)</div>
+        <div class="stat-value">${s.hist_prec}%</div>
+        <div class="stat-sub">Accuracy on UP calls</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Maximum Drawdown</div>
+        <div class="stat-value down">${s.max_drawdown}%</div>
+        <div class="stat-sub">Peak-to-trough risk</div>
+      </div>
+    `;
+
+    // Explainability Signals
+    const sig = s.signals;
+    document.getElementById('signalsGrid').innerHTML = `
+      <div class="signal-item">
+        <div class="signal-key">RSI Oscillator</div>
+        <div class="signal-val">${sig.rsi}</div>
+      </div>
+      <div class="signal-item">
+        <div class="signal-key">MACD Momentum</div>
+        <div class="signal-val">${sig.macd}</div>
+      </div>
+      <div class="signal-item">
+        <div class="signal-key">Moving Average Regime</div>
+        <div class="signal-val">${sig.trend}</div>
+      </div>
+      <div class="signal-item">
+        <div class="signal-key">Realized Volatility</div>
+        <div class="signal-val">${sig.volatility}</div>
+      </div>
+    `;
+
+    // Render Charts
+    const c = data.charts;
+    document.getElementById('chart-backtest').src    = 'data:image/png;base64,' + c.backtest;
+    document.getElementById('chart-price').src       = 'data:image/png;base64,' + c.price;
+    document.getElementById('chart-predictions').src = 'data:image/png;base64,' + c.predictions;
+    document.getElementById('chart-rsi').src         = 'data:image/png;base64,' + c.rsi;
+    document.getElementById('chart-macd').src        = 'data:image/png;base64,' + c.macd;
+    document.getElementById('chart-volume').src      = 'data:image/png;base64,' + c.volume;
+    document.getElementById('chart-dist').src        = 'data:image/png;base64,' + c.dist;
+
+    const resultsEl = document.getElementById('results');
+    resultsEl.style.display = 'block';
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+</script>
+</body>
+</html>
